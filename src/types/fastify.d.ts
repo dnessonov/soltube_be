@@ -10,6 +10,8 @@ export interface EnvConfig {
     REDIS_URL: string;
     IS_WORKER: boolean;
     VIDEO_THUMBNAILS_FOLDER: string;
+    VIDEO_CONTENT_FOLDER: string;
+    TEMPORARY_FOLDER: string;
 }
 
 declare module 'fastify' {

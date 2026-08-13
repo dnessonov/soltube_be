@@ -1,5 +1,7 @@
 import {FastifyInstance} from "fastify";
 import SolTubeWebSocket from "@/lib/websocket";
+import {pushJob} from "@/plugins/redis-listener/ffmpeg-worker";
+import path from "path";
 // import {ffmpegNewJobNotificationChannel, mainJobQueue} from "@/plugins/redis-listener";
 
 const handleFFMakeThumbnailResult = async (fastify: FastifyInstance, job: any, videoThumbResult: any) => {
@@ -12,8 +14,23 @@ const handleFFMakeThumbnailResult = async (fastify: FastifyInstance, job: any, v
     //const duration_ms :number = Math.floor(ffprobeResult.result?.format?.duration * 1000) || 0;
     // const pgsql_not_converted_videos_data_result = await fastify.pg.query(`INSERT INTO unconverted_videos_data (source_tmp_file_id, duration) VALUES ($1, $2) ON CONFLICT (source_tmp_file_id) DO UPDATE SET duration = EXCLUDED.duration RETURNING source_tmp_file_id;`, [job.tmp_file_pgsql_id, duration_ms]);
 
-    soltubeWs.sendToAll(job.unique_not_processed_video_id, {event: 'thumbnail-taken', videoThumbResult});
+    soltubeWs.sendToAll(job.unique_not_processed_video_id, {event: 'thumbnail-taken', videoThumbResult: { path: videoThumbResult?.path, taken_at: videoThumbResult?.taken_at } });
     console.log('made thumbnail result', videoThumbResult);
+
+
+    // add convert to fMP4 task
+
+    const converted_video_folder = fastify.config.VIDEO_CONTENT_FOLDER;
+
+    const convert_to_fmp4_task = {
+        type: 'ffmpeg-convert-add-moov-frames',
+        file_full_path: videoThumbResult?.video_data?.tmp_file_full_path,
+        output_file_full_path: path.join(converted_video_folder, videoThumbResult?.video_data?.tmp_filename),
+        output_filename: videoThumbResult?.video_data?.tmp_filename,
+        video_data: videoThumbResult?.video_data
+    }
+
+    await pushJob(fastify, convert_to_fmp4_task);
 }
 
 export { handleFFMakeThumbnailResult };

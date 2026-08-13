@@ -25,11 +25,7 @@ const notificationsRoutes: FastifyPluginAsync = async(fastify): Promise<void> =>
             }
         });
 
-
         // socket.send(JSON.stringify({'test': 'yomama'}));
-
-
-
     });
 }
 

@@ -3,9 +3,10 @@ import crypto from "node:crypto";
 
 //import UnprocessedVideo from "./single-video";
 import {MultipartFile} from "@fastify/multipart";
-import os from "node:os";
+//import os from "node:os";
 import path from "node:path";
 import {promises as fs} from "node:fs";
+//import * as process from "node:process";
 
 export interface UnprocessedVideosNewTemporaryFileParams {
     fileExt ?:string;
@@ -78,7 +79,12 @@ export default class UnprocessedVideos {
     }
 
     public async getTemporaryFilesDir(){
-        return os.tmpdir();
+        return this.fastify.config.TEMPORARY_FOLDER;
+        // return os.tmpdir();
+    }
+
+    public async getFullFilePath(tmp_filename :string){
+        return path.join(await this.getTemporaryFilesDir(), tmp_filename);
     }
 
 

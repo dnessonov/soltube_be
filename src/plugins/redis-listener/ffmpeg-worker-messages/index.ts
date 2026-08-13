@@ -1,7 +1,10 @@
 import {FastifyInstance} from "fastify";
 
 import {handleFFprobeResult} from "./ffprobe-result";
-import {handleFFMakeThumbnailResult} from "@/plugins/redis-listener/ffmpeg-worker-messages/ffmpeg-make-thumbnail-result";
+import {handleFFMakeThumbnailResult} from "./ffmpeg-make-thumbnail-result";
+import {handleFFMpegConvertToFmp4Result} from "./ffmpeg-convert-add-moov-frames-result";
+import {handleMp4BoxMseCodecObtainedResult} from "./mp4box-mse-codec-info-result";
+import {handleMoofFramesBuildIndexResult} from "./build-fmp4-moof-frames-index-result";
 
 const handleFfmpegUpdateMsg = async (fastify: FastifyInstance, msg: any) => {
 
@@ -14,6 +17,18 @@ const handleFfmpegUpdateMsg = async (fastify: FastifyInstance, msg: any) => {
 
         case 'ffmpeg-make-thumbnail-result':
             handleFFMakeThumbnailResult(fastify, msg.job, msg.result);
+            break;
+
+        case 'ffmpeg-convert-add-moov-frames-result':
+            handleFFMpegConvertToFmp4Result(fastify, msg.job, msg.result);
+            break;
+
+        case 'mp4box-mse-codec-info-result':
+            handleMp4BoxMseCodecObtainedResult(fastify, msg.job, msg.result);
+            break;
+
+        case 'build-fmp4-moof-frames-index-result':
+            handleMoofFramesBuildIndexResult(fastify, msg.job, msg.result);
             break;
 
         default:

@@ -1,5 +1,6 @@
 import {FastifyInstance} from "fastify";
-import {ffmpegNewJobNotificationChannel, mainJobQueue} from "@/plugins/redis-listener";
+import {pushJob} from "@/plugins/redis-listener/ffmpeg-worker";
+import SolTubeWebSocket from "@/lib/websocket/index";
 
 const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeResult: any) => {
 
@@ -9,7 +10,29 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
     const duration_ms :number = Math.floor(ffprobeResult.result?.format?.duration * 1000) || 0;
     const pgsql_not_converted_videos_data_result = await fastify.pg.query(`INSERT INTO unconverted_videos_data (source_tmp_file_id, duration) VALUES ($1, $2) ON CONFLICT (source_tmp_file_id) DO UPDATE SET duration = EXCLUDED.duration RETURNING source_tmp_file_id;`, [job.tmp_file_pgsql_id, duration_ms]);
 
+    const stream_to_get_desc_from = ffprobeResult.result.streams?.[0];
+    if(stream_to_get_desc_from){
+        console.log('stream_tags', stream_to_get_desc_from?.tags?.handler_name, stream_to_get_desc_from?.tags);
+
+        const soltubeWs = SolTubeWebSocket.getInstance(fastify);
+
+        const _recommended_description = stream_to_get_desc_from?.tags?.handler_name;
+        console.log("_recommended_description", _recommended_description);
+        if(_recommended_description) {
+            await fastify.pg.query(`UPDATE unconverted_videos SET description = $1 WHERE source_tmp_file_id = $2;`,[_recommended_description, job.tmp_file_pgsql_id]);
+
+            await soltubeWs.sendToAll(job.unique_not_processed_video_id, { event: 'recommended-description', value: _recommended_description.trim()});
+            console.log("sending via socket", job.unique_not_processed_video_id, { event: 'recommended-description', value: _recommended_description.trim()} );
+        }
+    }
+
     if(duration_ms > 0){
+
+        // notify that duration is obtained via connected WS
+        const soltubeWs = SolTubeWebSocket.getInstance(fastify);
+        await soltubeWs.sendToAll(job?.unique_not_processed_video_id, {event: 'duration-updated', duration: duration_ms});
+        console.log('sending duration via ws', job?.unique_not_processed_video_id, {duration: duration_ms});
+
 
         // pick audio and video stream from the probed file
 
@@ -48,9 +71,13 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
                 'take_at': Math.floor(Math.floor(ffprobeResult.result?.format?.duration) * Math.random())
             };
 
-            await fastify.redis.data.rpush(mainJobQueue, JSON.stringify(ffmpeg_job));
-            await fastify.redis.data.publish(ffmpegNewJobNotificationChannel, 'new_ffmpeg_work'); // redis channel named the same as queue. ok...
+            await pushJob(fastify, ffmpeg_job);
+        }else{
+            // it's an audio file, it seems
+            // TODO: process audio file
         }
+
+
 
         // TODO: schedule video conversion to proper format and splitting into parts of 5Mb
 

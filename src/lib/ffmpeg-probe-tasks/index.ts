@@ -1,7 +1,7 @@
 import {FastifyInstance} from "fastify";
 import path from 'node:path';
-import {ffmpegNewJobNotificationChannel, mainJobQueue} from "@/plugins/redis-listener";
 import UnprocessedVideos from "@/lib/unprocessed-videos/index";
+import {pushJob} from "@/plugins/redis-listener/ffmpeg-worker";
 
 export default class FFmpegProbeTasks {
 
@@ -36,8 +36,7 @@ export default class FFmpegProbeTasks {
             'unique_not_processed_video_id': params?.unique_not_processed_video_id
         };
 
-        await this.fastify.redis.data.rpush(mainJobQueue, JSON.stringify(ffmpeg_job));
-        await this.fastify.redis.data.publish(ffmpegNewJobNotificationChannel, 'new_ffmpeg_work'); // redis channel named the same as queue. ok...
+        await pushJob(this.fastify, ffmpeg_job);
         return true;
     }
 

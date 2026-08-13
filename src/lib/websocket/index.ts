@@ -1,6 +1,7 @@
 import {FastifyInstance} from "fastify";
 import {WebSocket} from "@fastify/websocket";
 import {randomUUID} from "node:crypto";
+import path from "path";
 
 export default class SolTubeWebSocket {
     private static __instance: SolTubeWebSocket | null = null;
@@ -23,7 +24,7 @@ export default class SolTubeWebSocket {
     public async onVideoWebSocketConnected(connection: WebSocket, socket: any, videoId: string) {
 
         // check that videoId exists
-        const pgsql_video_data = await this.fastify.pg.query(`SELECT d.*, ucv.created_at AS ucv_created_at, ucv.updated_at AS ucv_updated_at, ucv.source_tmp_file_id AS tmp_file_id FROM unconverted_videos AS ucv LEFT JOIN unconverted_videos_data AS d ON (d.source_tmp_file_id = ucv.source_tmp_file_id) WHERE ucv.str_id = $1;`, [videoId]);
+        const pgsql_video_data = await this.fastify.pg.query(`SELECT d.*, ucv.created_at AS ucv_created_at, ucv.updated_at AS ucv_updated_at, ucv.source_tmp_file_id AS tmp_file_id, tuf.original_filename AS tuf_original_filename, tuf.original_filename_extension AS tuf_original_filename_ext, ucv.title AS ucv_title, ucv.description AS ucv_description FROM unconverted_videos AS ucv INNER JOIN tmp_uploaded_file AS tuf ON (tuf.id = ucv.source_tmp_file_id) LEFT JOIN unconverted_videos_data AS d ON (d.source_tmp_file_id = ucv.source_tmp_file_id) WHERE ucv.str_id = $1;`, [videoId]);
         if(pgsql_video_data.rows.length === 0) {
             return null; // disconnect socket immediately
         }else{
@@ -36,6 +37,20 @@ export default class SolTubeWebSocket {
             this.videoIdWsSubscriptions.get(videoId)!.set(connectionId, [connection,socket]);
 
             console.log(`videoId ${videoId} connected via WS, connection ID:.`, connectionId);
+
+            let proposed_title = pgsql_video_data.rows[0]?.ucv_title.trim();
+            if(!proposed_title) { proposed_title = path.parse(pgsql_video_data.rows[0]?.tuf_original_filename).name; }
+            proposed_title = proposed_title.trim();
+
+            let proposed_description = pgsql_video_data.rows[0]?.ucv_description.trim();
+
+            socket.send(JSON.stringify({
+                event: "init",
+                duration: pgsql_video_data.rows[0].duration,
+                thumbnail: pgsql_video_data.rows[0].thumb_img ? pgsql_video_data.rows[0].thumb_img : undefined,
+                proposed_title: proposed_title,
+                proposed_description: proposed_description
+            }));
 
             return {
                 connectionId: connectionId,

@@ -30,7 +30,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
 
   const schema: JSONSchemaType<EnvConfig> = {
     type: 'object',
-    required: ['PORT', 'DATABASE_URL', 'NODE_ENV','REDIS_URL', 'VIDEO_THUMBNAILS_FOLDER'],
+    required: ['PORT', 'DATABASE_URL', 'NODE_ENV','REDIS_URL', 'VIDEO_THUMBNAILS_FOLDER','VIDEO_CONTENT_FOLDER','TEMPORARY_FOLDER'],
     properties: {
       PORT: { type: 'number', default: is_worker_process ? 3002  : 3000 },
       DATABASE_URL: { type: 'string' },
@@ -42,7 +42,9 @@ const app: FastifyPluginAsync<AppOptions> = async (
       CORS_URL: { type: 'string', nullable: true },
       REDIS_URL: { type: 'string' },
       IS_WORKER: { type: 'boolean', default: false },
-      VIDEO_THUMBNAILS_FOLDER: { type: 'string' }
+      VIDEO_THUMBNAILS_FOLDER: { type: 'string' },
+      VIDEO_CONTENT_FOLDER: { type: 'string' },
+      TEMPORARY_FOLDER: { type: 'string' },
     }
   };
 

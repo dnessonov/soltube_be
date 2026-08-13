@@ -202,13 +202,13 @@ const example: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
                               // create ffmpeg probe task to determine codec, length and other video file information
                               // video conversion and preparation for onchain placement will be handled after probing and further user decisions
 
-                              console.log("ffmpeg job", {
+                              /*console.log("ffmpeg job", {
                                   file_full_path: new_unprocessed_video.temp_file.fullPath,
                                   filename: new_unprocessed_video.temp_file.fileName,
                                   pgsql_tmp_file_id: new_unprocessed_video.temp_file.pg_record_id,
                                   pgsql_tmp_file_timestamp: new_unprocessed_video.temp_file.pg_record_created_timestamp,
                                   unique_not_processed_video_id: new_unprocessed_video.str_id
-                              });
+                              });*/
 
                               await ffmpeg_probe_tasks.new({
                                   file_full_path: new_unprocessed_video.temp_file.fullPath,

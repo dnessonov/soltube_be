@@ -27,6 +27,10 @@ CREATE TABLE unconverted_videos(
         REFERENCES tmp_uploaded_file(id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
 
+
+    title VARCHAR(255) NOT NULL DEFAULT '',
+    description VARCHAR(1500) NOT NULL DEFAULT '',
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -54,6 +58,19 @@ CREATE TABLE unconverted_videos_raw_ffmpeg_probe_data(
         ON DELETE RESTRICT ON UPDATE CASCADE,
 
     ffmpeg_probe_data TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE unconverted_videos_convert_to_fragmented_mp4(
+    source_tmp_file_id BIGINT, PRIMARY KEY(source_tmp_file_id),
+    CONSTRAINT fk_source_tmp_file_id_video_conversion_queue
+        FOREIGN KEY(source_tmp_file_id)
+        REFERENCES tmp_uploaded_file(id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    output_file VARCHAR(255) NULL,
+    mse_codec VARCHAR(127) NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE video_conversion_job(
