@@ -8,7 +8,7 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
     const pg_new_record_id = pgsql_ffmpeg_raw_data_result.rows[0].source_tmp_file_id;
 
     const duration_ms :number = Math.floor(ffprobeResult.result?.format?.duration * 1000) || 0;
-    const pgsql_not_converted_videos_data_result = await fastify.pg.query(`INSERT INTO unconverted_videos_data (source_tmp_file_id, duration) VALUES ($1, $2) ON CONFLICT (source_tmp_file_id) DO UPDATE SET duration = EXCLUDED.duration RETURNING source_tmp_file_id;`, [job.tmp_file_pgsql_id, duration_ms]);
+
 
     const stream_to_get_desc_from = ffprobeResult.result.streams?.[0];
     if(stream_to_get_desc_from){
@@ -54,7 +54,33 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
                 if(_default_video_stream_index && _default_audio_stream_index) { break; }
             }
 
-            await fastify.pg.query(`UPDATE unconverted_videos_data SET video_stream_i = $2, audio_stream_i = $3 WHERE source_tmp_file_id = $1;`, [job.tmp_file_pgsql_id, _default_video_stream_index, _default_audio_stream_index]);
+            let _format_bitrate :number = ffprobeResult.result?.format?.bit_rate ?? 0;
+
+            let _video_resolution_h = 0;
+            let _video_resolution_w = 0;
+
+            if((_default_video_stream_index !== null)){
+                _video_resolution_h = ffprobeResult.result?.streams[_default_video_stream_index]?.coded_height ?? 0;
+                _video_resolution_w = ffprobeResult.result?.streams[_default_video_stream_index]?.coded_width ?? 0;
+            }
+
+            let _audio_sample_rate = 0;
+            let _audio_channels = 0;
+
+            if((_default_audio_stream_index !== null)){
+                _audio_sample_rate = ffprobeResult.result?.streams[_default_audio_stream_index]?.sample_rate ?? 0;
+                _audio_channels = ffprobeResult.result?.streams[_default_audio_stream_index]?.channels ?? 0;
+            }
+
+            const pgsql_not_converted_videos_data_result = await fastify.pg.query(`INSERT INTO unconverted_videos_data (source_tmp_file_id, duration,video_stream_i, audio_stream_i, bit_rate, video_resolution_h, video_resolution_w, audio_sample_rate, audio_channels) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (source_tmp_file_id) DO UPDATE SET duration = EXCLUDED.duration RETURNING source_tmp_file_id;`, [
+                job.tmp_file_pgsql_id,
+                duration_ms, _default_video_stream_index, _default_audio_stream_index, _format_bitrate,
+                _video_resolution_h, _video_resolution_w, _audio_sample_rate, _audio_channels
+            ]);
+
+            if(pgsql_not_converted_videos_data_result){
+                // all ok
+            }
         }
 
         if(_default_video_stream_index !== null){
@@ -85,7 +111,7 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
     }
 
 
-    if(pg_new_record_id && pgsql_not_converted_videos_data_result){
+    if(pg_new_record_id){
         // all is ok
     }
 

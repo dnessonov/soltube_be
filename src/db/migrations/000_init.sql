@@ -47,6 +47,13 @@ CREATE TABLE unconverted_videos_data(
     duration BIGINT NULL,
     video_stream_i SMALLINT NULL,
     audio_stream_i SMALLINT NULL,
+    video_resolution_h SMALLINT NOT NULL DEFAULT 0,
+    video_resolution_w SMALLINT NOT NULL DEFAULT 0,
+    audio_sample_rate INTEGER NOT NULL DEFAULT 0,
+    audio_channels SMALLINT NOT NULL DEFAULT 0,
+
+    bit_rate INTEGER NOT NULL DEFAULT 0,
+
     thumb_img VARCHAR(255) NULL
 );
 
