@@ -14,10 +14,46 @@ const handleBuildMoofFramesFMp4FileIndex = async (fastify: FastifyInstance, job:
     const fmp4_tracks_filename = job.output_filename_prefix + ".tracks.json";
     const fmp4_tracks_full_path = path.join(job.output_folder, fmp4_tracks_filename);
 
-    if(index_map_result !== undefined) {
-        const buffer = Buffer.alloc(index_map_result.moof_index.length * 8);
 
-        let offset = 0;
+    let video_stream_i: number = -1;
+    let audio_stream_i: number = -1;
+
+    let video_resolution_h: number = 0;
+    let video_resolution_w: number = 0;
+    let audio_sample_rate: number = 0;
+    let audio_channels: number = 0;
+    let bit_rate: number = 0;
+    let duration: number = 0;
+
+
+    const pgsql_result = await fastify.pg.query(`SELECT uvd.duration, uvd.video_resolution_h, uvd.video_resolution_w, uvd.audio_sample_rate, uvd.audio_channels, uvd.bit_rate, uvd.video_stream_i, uvd.audio_stream_i FROM unconverted_videos_data AS uvd WHERE uvd.source_tmp_file_id = $1;`, [job?.video_data?.source_tmp_file_id]);
+
+    if(pgsql_result.rows.length > 0){
+        video_resolution_h = pgsql_result.rows[0].video_resolution_h;
+        video_resolution_w = pgsql_result.rows[0].video_resolution_w;
+        audio_sample_rate = pgsql_result.rows[0].audio_sample_rate;
+        audio_channels = pgsql_result.rows[0].audio_channels;
+        bit_rate = pgsql_result.rows[0].bit_rate;
+        video_stream_i = pgsql_result.rows[0].video_stream_i;
+        audio_stream_i = pgsql_result.rows[0].audio_stream_i;
+        duration = pgsql_result.rows[0].duration;
+    }
+
+    const buffer = Buffer.alloc((index_map_result === undefined ? 0 : index_map_result.moof_index.length * 8) + 19);
+    let offset = 0;
+
+    buffer.writeUInt32LE(bit_rate, offset);
+    buffer.writeUInt8(video_stream_i, offset + 4);
+    buffer.writeUInt8(audio_stream_i, offset + 5);
+    buffer.writeUInt8(audio_channels, offset + 6);
+    buffer.writeUInt32LE(audio_sample_rate, offset + 7);
+    buffer.writeUInt16LE(video_resolution_h, offset + 11);
+    buffer.writeUInt16LE(video_resolution_w, offset + 13); // overall header length is 15
+    buffer.writeUInt32LE(duration, offset + 15);
+
+    offset += 19;
+
+    if(index_map_result !== undefined) {
         for (const [num1, num2] of index_map_result.moof_index) {
             buffer.writeUInt32LE(num1, offset);     // Write first u32 (Little Endian)
             buffer.writeUInt32LE(num2, offset + 4); // Write second u32
