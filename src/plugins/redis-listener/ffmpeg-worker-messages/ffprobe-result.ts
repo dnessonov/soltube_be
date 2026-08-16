@@ -37,16 +37,27 @@ const handleFFprobeResult = async (fastify: FastifyInstance, job: any, ffprobeRe
         // pick audio and video stream from the probed file
 
         let _default_video_stream_index = null;
+        let _default_video_stream_tag_language :string | null | undefined = null;
+
         let _default_audio_stream_index = null;
 
         if(ffprobeResult.result?.streams.length > 0){
             for(const streamElem of ffprobeResult.result.streams){
                 switch (streamElem?.codec_type){
                     case "video":
-                        if(_default_video_stream_index === null){ _default_video_stream_index = streamElem?.index; }
+                        if(_default_video_stream_index === null){
+                            _default_video_stream_index = streamElem?.index;
+                            _default_video_stream_tag_language = streamElem?.tags?.language;
+                        }
                         break;
                     case "audio":
-                        if(_default_audio_stream_index === null){ _default_audio_stream_index = streamElem?.index; }
+                        if(_default_audio_stream_index === null){ _default_audio_stream_index = streamElem?.index; }else{
+                            if((typeof _default_video_stream_tag_language === 'string') && (typeof streamElem?.tags?.language === 'string')){
+                                if(_default_video_stream_tag_language === streamElem?.tags?.language){
+                                    _default_audio_stream_index = streamElem?.index; // prefer same language as in video track
+                                }
+                            }
+                        }
                         break;
                     default:
                         break;

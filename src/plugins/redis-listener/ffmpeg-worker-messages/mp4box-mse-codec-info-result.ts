@@ -27,8 +27,6 @@ const handleMp4BoxMseCodecObtainedResult = async (fastify: FastifyInstance, job:
         }
         await pushJob(fastify, moof_frames_index_task);
 
-
-
         const split_into_fragments_task = {
             type: 'split-into-fragments',
             input_file_full_path: job.fmp4_filename_full_path,

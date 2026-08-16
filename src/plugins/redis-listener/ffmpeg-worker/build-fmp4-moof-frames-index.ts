@@ -26,7 +26,7 @@ const handleBuildMoofFramesFMp4FileIndex = async (fastify: FastifyInstance, job:
     let duration: number = 0;
 
 
-    const pgsql_result = await fastify.pg.query(`SELECT uvd.duration, uvd.video_resolution_h, uvd.video_resolution_w, uvd.audio_sample_rate, uvd.audio_channels, uvd.bit_rate, uvd.video_stream_i, uvd.audio_stream_i FROM unconverted_videos_data AS uvd WHERE uvd.source_tmp_file_id = $1;`, [job?.video_data?.source_tmp_file_id]);
+    const pgsql_result = await fastify.pg.query(`SELECT uvd.duration, uvd.video_resolution_h, uvd.video_resolution_w, uvd.audio_sample_rate, uvd.audio_channels, uvd.bit_rate, uvd.video_stream_i, uvd.audio_stream_i, uvctfmp4.mse_codec AS codec_str FROM unconverted_videos_data AS uvd INNER JOIN unconverted_videos_convert_to_fragmented_mp4 AS uvctfmp4 ON (uvctfmp4.source_tmp_file_id = uvd.source_tmp_file_id) WHERE uvd.source_tmp_file_id = $1;`, [job?.video_data?.source_tmp_file_id]);
 
     if(pgsql_result.rows.length > 0){
         video_resolution_h = pgsql_result.rows[0].video_resolution_h;
@@ -39,7 +39,7 @@ const handleBuildMoofFramesFMp4FileIndex = async (fastify: FastifyInstance, job:
         duration = pgsql_result.rows[0].duration;
     }
 
-    const buffer = Buffer.alloc((index_map_result === undefined ? 0 : index_map_result.moof_index.length * 8) + 19);
+    const buffer = Buffer.alloc((index_map_result === undefined ? 0 : index_map_result.moof_index.length * 8) + 20 + pgsql_result.rows[0].codec_str.length);
     let offset = 0;
 
     buffer.writeUInt32LE(bit_rate, offset);
@@ -50,8 +50,9 @@ const handleBuildMoofFramesFMp4FileIndex = async (fastify: FastifyInstance, job:
     buffer.writeUInt16LE(video_resolution_h, offset + 11);
     buffer.writeUInt16LE(video_resolution_w, offset + 13); // overall header length is 15
     buffer.writeUInt32LE(duration, offset + 15);
-
-    offset += 19;
+    buffer.writeUInt8(pgsql_result.rows[0].codec_str.length, offset + 19);
+    buffer.write(pgsql_result.rows[0].codec_str, offset + 20)
+    offset += 20 + pgsql_result.rows[0].codec_str.length;
 
     if(index_map_result !== undefined) {
         for (const [num1, num2] of index_map_result.moof_index) {
